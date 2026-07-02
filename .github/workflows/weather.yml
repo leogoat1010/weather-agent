@@ -1,0 +1,31 @@
+name: "🌤️ Daily Weather Report"
+
+on:
+  schedule:
+    # 北京时间 7:30 = UTC 23:30（前一天）
+    - cron: "30 23 * * *"
+  # 也支持手动触发（方便测试）
+  workflow_dispatch:
+
+jobs:
+  weather:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+
+      - name: 运行天气播报
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+          CITY: "南京"
+        run: python main.py
