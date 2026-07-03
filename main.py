@@ -1,6 +1,6 @@
 """
 Weather Agent - 天气助手
-阶段七：和风天气 + 生活指数 + DeepSeek AI + 微信推送
+阶段七：和风天气 + 生活指数 + DeepSeek AI + 邮件推送
 """
 import os
 import sys
