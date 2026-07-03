@@ -26,8 +26,10 @@ jobs:
       - name: 运行天气播报
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
           QWEATHER_KEY: ${{ secrets.QWEATHER_KEY }}
           QWEATHER_HOST: "https://m77fc42qjn.re.qweatherapi.com"
           CITY: "南京"
+          EMAIL_USER: "2499481680@qq.com"
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_TO: "2350823980@qq.com"
         run: python main.py

@@ -4,6 +4,10 @@ Weather Agent - 天气助手
 """
 import os
 import sys
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.utils import formataddr
 import requests
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -13,10 +17,12 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 # ---------- 配置 ----------
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-PUSHPLUS_TOKEN = os.getenv("PUSHPLUS_TOKEN")
 QWEATHER_HOST = os.getenv("QWEATHER_HOST", "https://devapi.qweather.com")
 QWEATHER_KEY = os.getenv("QWEATHER_KEY")
 CITY = os.getenv("CITY", "Shanghai")
+EMAIL_USER = os.getenv("EMAIL_USER")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+EMAIL_TO = os.getenv("EMAIL_TO", "")
 
 # ---------- 城市 → 和风天气 Location ID ----------
 CITY_IDS = {
@@ -147,24 +153,34 @@ def ai_summary(weather_text, indices_text):
     return response.choices[0].message.content
 
 
-def send_to_wechat(title, content):
-    """通过 PushPlus 推送微信"""
-    if not PUSHPLUS_TOKEN or PUSHPLUS_TOKEN == "your_token_here":
-        print("⚠️  未配置 PushPlus Token，跳过微信推送")
+def send_email(subject, body, to_emails):
+    """通过 QQ 邮箱 SMTP 发送邮件"""
+    if not EMAIL_USER or not EMAIL_PASSWORD:
+        print("⚠️  未配置邮箱，跳过邮件推送")
+        return False
+    if not to_emails:
+        print("⚠️  未配置收件人，跳过邮件推送")
         return False
 
-    url = "http://www.pushplus.plus/send"
-    resp = requests.post(url, json={
-        "token": PUSHPLUS_TOKEN,
-        "title": title,
-        "content": content,
-    })
-    result = resp.json()
-    if result.get("code") == 200:
-        print("✅ 已推送到微信")
+    # 构建 HTML 邮件
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = formataddr(("天气助手", EMAIL_USER))
+    msg["To"] = to_emails
+
+    html_body = body.replace("\n", "<br>")
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+    try:
+        server = smtplib.SMTP_SSL("smtp.qq.com", 465)
+        server.login(EMAIL_USER, EMAIL_PASSWORD)
+        recipients = [e.strip() for e in to_emails.split(",") if e.strip()]
+        server.sendmail(EMAIL_USER, recipients, msg.as_string())
+        server.quit()
+        print(f"✅ 邮件已发送至：{', '.join(recipients)}")
         return True
-    else:
-        print(f"❌ 推送失败：{result}")
+    except Exception as e:
+        print(f"❌ 邮件发送失败：{e}")
         return False
 
 
@@ -191,7 +207,7 @@ def main():
 
     if summary:
         print(summary)
-        send_to_wechat("🌤️ 今日天气播报", summary)
+        send_email(f"🌤️ {CITY}今日天气播报", summary, EMAIL_TO)
     else:
         print("⚠️  未配置 DeepSeek API Key，使用基础输出：\n")
         print(weather_text)
