@@ -154,7 +154,7 @@ def ai_summary(weather_text, indices_text):
 
 
 def send_email(subject, body, to_emails):
-    """通过 QQ 邮箱 SMTP 发送邮件"""
+    """通过 QQ 邮箱 SMTP 发送邮件（逐个发送，收件人互不可见）"""
     if not EMAIL_USER or not EMAIL_PASSWORD:
         print("⚠️  未配置邮箱，跳过邮件推送")
         return False
@@ -162,22 +162,24 @@ def send_email(subject, body, to_emails):
         print("⚠️  未配置收件人，跳过邮件推送")
         return False
 
-    # 构建 HTML 邮件
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = formataddr(("天气助手", EMAIL_USER))
-    msg["To"] = to_emails
-
+    recipients = [e.strip() for e in to_emails.split(",") if e.strip()]
     html_body = body.replace("\n", "<br>")
-    msg.attach(MIMEText(html_body, "html", "utf-8"))
 
     try:
         server = smtplib.SMTP_SSL("smtp.qq.com", 465)
         server.login(EMAIL_USER, EMAIL_PASSWORD)
-        recipients = [e.strip() for e in to_emails.split(",") if e.strip()]
-        server.sendmail(EMAIL_USER, recipients, msg.as_string())
+
+        for addr in recipients:
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"] = formataddr(("天气助手", EMAIL_USER))
+            msg["To"] = addr
+
+            msg.attach(MIMEText(html_body, "html", "utf-8"))
+            server.sendmail(EMAIL_USER, [addr], msg.as_string())
+            print(f"✅ 已发送至：{addr}")
+
         server.quit()
-        print(f"✅ 邮件已发送至：{', '.join(recipients)}")
         return True
     except Exception as e:
         print(f"❌ 邮件发送失败：{e}")
