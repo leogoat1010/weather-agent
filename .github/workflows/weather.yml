@@ -3,7 +3,7 @@ name: "🌤️ Daily Weather Report"
 on:
   schedule:
     # 北京时间 7:30 = UTC 23:30（前一天）
-    - cron: "30 23 * * *"
+    - cron: "50 1 * * *"
   # 也支持手动触发（方便测试）
   workflow_dispatch:
 
