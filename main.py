@@ -1,10 +1,12 @@
 """
 Weather Agent - 天气助手
-阶段七：和风天气 + 生活指数 + DeepSeek AI + 邮件推送
+多城市 · 个性化播报 · DeepSeek AI · 邮件推送
 """
 import os
 import sys
+import json
 import smtplib
+from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formataddr
@@ -19,10 +21,9 @@ sys.stdout.reconfigure(encoding="utf-8")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 QWEATHER_HOST = os.getenv("QWEATHER_HOST", "https://devapi.qweather.com")
 QWEATHER_KEY = os.getenv("QWEATHER_KEY")
-CITY = os.getenv("CITY", "Shanghai")
 EMAIL_USER = os.getenv("EMAIL_USER")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
-EMAIL_TO = os.getenv("EMAIL_TO", "")
+FRIENDS_FILE = os.path.join(os.path.dirname(__file__), "friends.json")
 
 # ---------- 城市 → 和风天气 Location ID ----------
 CITY_IDS = {
@@ -33,20 +34,10 @@ CITY_IDS = {
     "长沙": "101250101", "郑州": "101180101", "济南": "101120101",
     "青岛": "101120201", "大连": "101070201", "厦门": "101230201",
     "福州": "101230101", "合肥": "101220101",
+    "新乡": "101180301", "昆山": "101190404",
 }
 
-
-def get_location_id(city):
-    """根据城市名获取和风天气 location ID"""
-    if city in CITY_IDS:
-        return CITY_IDS[city]
-
-    # 不在预设列表里，尝试拼音/英文城市名
-    for name, lid in CITY_IDS.items():
-        if city.lower() in name.lower() or name in city:
-            return lid
-
-    raise Exception(f"找不到城市「{city}」，请在 CITY_IDS 中手动添加。已知城市：{list(CITY_IDS.keys())}")
+WEEKDAYS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 
 # ---------- 生活指数类型 ----------
 INDICES_TYPES = {
@@ -56,6 +47,25 @@ INDICES_TYPES = {
     5: "紫外线指数",
     8: "舒适度指数",
 }
+
+
+def load_friends():
+    """加载好友配置（GitHub 用 Secret，本地用文件）"""
+    config_str = os.getenv("FRIENDS_CONFIG")
+    if config_str:
+        return json.loads(config_str)
+    with open(FRIENDS_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def get_location_id(city):
+    """根据城市名获取和风天气 location ID"""
+    if city in CITY_IDS:
+        return CITY_IDS[city]
+    for name, lid in CITY_IDS.items():
+        if city.lower() in name.lower() or name in city:
+            return lid
+    raise Exception(f"找不到城市「{city}」，请在 CITY_IDS 中手动添加。已知城市：{list(CITY_IDS.keys())}")
 
 
 def get_weather(location_id):
@@ -87,7 +97,6 @@ def build_weather_text(daily):
     """把天气数据整理成纯文本，喂给 AI"""
     labels = ["今天", "明天", "后天"]
     lines = []
-
     for i, day in enumerate(daily[:3]):
         lines.append(
             f"{labels[i]}（{day['fxDate']}）："
@@ -97,7 +106,6 @@ def build_weather_text(daily):
             f"紫外线指数{day['uvIndex']}，"
             f"{day['windDirDay']}风{day['windScaleDay']}级"
         )
-
     return "\n".join(lines)
 
 
@@ -105,7 +113,6 @@ def build_indices_text(daily_indices):
     """把生活指数整理成纯文本"""
     if not daily_indices:
         return ""
-
     lines = ["\n今日生活指数："]
     seen = set()
     for item in daily_indices:
@@ -114,12 +121,11 @@ def build_indices_text(daily_indices):
             continue
         seen.add(name)
         lines.append(f"{name}：{item['category']}，{item['text']}")
-
     return "\n".join(lines)
 
 
-def ai_summary(weather_text, indices_text):
-    """用 DeepSeek AI 生成人性化天气播报"""
+def ai_summary(send_name, to_name, city, weather_text, indices_text):
+    """用 DeepSeek AI 生成个性化天气播报"""
     if not DEEPSEEK_API_KEY or DEEPSEEK_API_KEY == "your_api_key_here":
         return None
 
@@ -128,9 +134,13 @@ def ai_summary(weather_text, indices_text):
         base_url="https://api.deepseek.com",
     )
 
+    now = datetime.now()
+    date_str = f"{now.year}/{now.month}/{now.day} {WEEKDAYS[now.weekday()]}"
+
     prompt = f"""你是天气预报助手。请根据以下数据，生成一段约150字的中文天气播报。
 
 要求：
+- 以"{to_name}早上好，我是{send_name}～今天是{date_str}"开头
 - 语气亲切自然，像朋友每天早上发消息
 - 概述三天天气趋势
 - 提醒下雨天带伞
@@ -138,7 +148,7 @@ def ai_summary(weather_text, indices_text):
 - 提一句洗车建议和运动建议
 - 如果紫外线强，提醒防晒
 
-城市：{CITY}
+城市：{city}
 
 === 天气数据 ===
 {weather_text}
@@ -149,40 +159,32 @@ def ai_summary(weather_text, indices_text):
         messages=[{"role": "user", "content": prompt}],
         temperature=0.8,
     )
-
     return response.choices[0].message.content
 
 
-def send_email(subject, body, to_emails):
-    """通过 QQ 邮箱 SMTP 发送邮件（逐个发送，收件人互不可见）"""
+def send_email(subject, body, to_email):
+    """通过 QQ 邮箱 SMTP 发送单封邮件"""
     if not EMAIL_USER or not EMAIL_PASSWORD:
-        print("⚠️  未配置邮箱，跳过邮件推送")
-        return False
-    if not to_emails:
-        print("⚠️  未配置收件人，跳过邮件推送")
+        print("   ⚠️  未配置邮箱，跳过")
         return False
 
-    recipients = [e.strip() for e in to_emails.split(",") if e.strip()]
     html_body = body.replace("\n", "<br>")
 
     try:
         server = smtplib.SMTP_SSL("smtp.qq.com", 465)
         server.login(EMAIL_USER, EMAIL_PASSWORD)
 
-        for addr in recipients:
-            msg = MIMEMultipart("alternative")
-            msg["Subject"] = subject
-            msg["From"] = formataddr(("天气助手", EMAIL_USER))
-            msg["To"] = addr
-
-            msg.attach(MIMEText(html_body, "html", "utf-8"))
-            server.sendmail(EMAIL_USER, [addr], msg.as_string())
-            print(f"✅ 已发送至：{addr}")
-
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = formataddr(("天气助手", EMAIL_USER))
+        msg["To"] = to_email
+        msg.attach(MIMEText(html_body, "html", "utf-8"))
+        server.sendmail(EMAIL_USER, [to_email], msg.as_string())
         server.quit()
+        print(f"   ✅ 已发送 → {to_email}")
         return True
     except Exception as e:
-        print(f"❌ 邮件发送失败：{e}")
+        print(f"   ❌ 发送失败：{e}")
         return False
 
 
@@ -191,31 +193,49 @@ def main():
     print("🌤️  Weather Agent - 天气助手")
     print("=" * 40)
 
-    # 1. 查城市 ID
-    print(f"\n📍 查询城市：{CITY}")
-    location_id = get_location_id(CITY)
-    print(f"   城市ID：{location_id}")
+    friends = load_friends()
+    print(f"\n📋 共 {len(friends)} 位好友\n")
 
-    # 2. 获取天气 + 生活指数
-    daily = get_weather(location_id)
-    indices = get_life_indices(location_id)
+    for friend in friends:
+        send_name = friend["sendName"]
+        to_name = friend["toName"]
+        email = friend["email"]
+        city = friend["city"]
 
-    weather_text = build_weather_text(daily)
-    indices_text = build_indices_text(indices)
+        print(f"{'─' * 40}")
+        print(f"📍 {to_name} → {city}（{email}）")
 
-    # 3. AI 总结
-    print("\n⏳ 正在用 AI 整理天气播报...\n")
-    summary = ai_summary(weather_text, indices_text)
+        # 1. 城市定位
+        try:
+            location_id = get_location_id(city)
+        except Exception as e:
+            print(f"   ⚠️ 跳过：{e}")
+            continue
 
-    if summary:
-        print(summary)
-        send_email(f"🌤️ {CITY}今日天气播报", summary, EMAIL_TO)
-    else:
-        print("⚠️  未配置 DeepSeek API Key，使用基础输出：\n")
-        print(weather_text)
-        print(indices_text)
+        # 2. 天气 + 生活指数
+        try:
+            daily = get_weather(location_id)
+            indices = get_life_indices(location_id)
+        except Exception as e:
+            print(f"   ⚠️ 天气获取失败：{e}")
+            continue
 
-    print("\n" + "=" * 40)
+        weather_text = build_weather_text(daily)
+        indices_text = build_indices_text(indices)
+
+        # 3. AI 个性化播报
+        print("   ⏳ 生成个性化播报...")
+        summary = ai_summary(send_name, to_name, city, weather_text, indices_text)
+
+        if summary:
+            print(f"   {summary[:60]}...")
+            send_email(f"🌤️ {city}今日天气播报", summary, email)
+        else:
+            print("   ⚠️ 未配置 DeepSeek API Key，使用基础输出")
+            plain = f"{to_name}早上好～\n\n城市：{city}\n{weather_text}{indices_text}"
+            send_email(f"🌤️ {city}今日天气播报", plain, email)
+
+    print(f"\n{'=' * 40}")
 
 
 if __name__ == "__main__":
