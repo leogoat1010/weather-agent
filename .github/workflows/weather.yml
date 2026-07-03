@@ -29,7 +29,7 @@ jobs:
           QWEATHER_KEY: ${{ secrets.QWEATHER_KEY }}
           QWEATHER_HOST: "https://m77fc42qjn.re.qweatherapi.com"
           CITY: "南京"
-          EMAIL_USER: "2499481680@qq.com"
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-          EMAIL_TO: "2350823980@qq.com"
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
         run: python main.py
