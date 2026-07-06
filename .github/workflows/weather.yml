@@ -2,8 +2,8 @@ name: "🌤️ Daily Weather Report"
 
 on:
   schedule:
-    # 北京时间 7:30 = UTC 23:30（前一天）
-    - cron: "30 23 * * *"
+    # 北京时间 5:30 = UTC 21:30（前一天，提前2小时缓冲 GitHub Actions 调度延迟）
+    - cron: "30 21 * * *"
   # 也支持手动触发（方便测试）
   workflow_dispatch:
 
