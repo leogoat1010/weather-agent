@@ -6,7 +6,7 @@ import os
 import sys
 import json
 import smtplib
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formataddr
@@ -134,7 +134,8 @@ def ai_summary(send_name, to_name, city, weather_text, indices_text):
         base_url="https://api.deepseek.com",
     )
 
-    now = datetime.now()
+    tz_beijing = timezone(timedelta(hours=8))
+    now = datetime.now(tz_beijing)
     date_str = f"{now.year}/{now.month}/{now.day} {WEEKDAYS[now.weekday()]}"
 
     prompt = f"""你是天气预报助手。请根据以下数据，生成一段约150字的中文天气播报。
