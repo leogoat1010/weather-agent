@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>天气播报邮件模板预览</title>
+<style>
+  /* 邮件客户端兼容：内联为主，style 仅用于预览 */
+  body {
+    margin: 0; padding: 20px;
+    background: #f0f2f5;
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+  }
+  .preview-label {
+    text-align: center; color: #999; font-size: 13px; margin-bottom: 16px;
+  }
+</style>
+</head>
+<body>
+
+<div class="preview-label">⬇ 以下是邮件实际效果预览 ⬇</div>
+
+<!-- ============================================================ -->
+<!--  邮件主体（以下是实际发送的 HTML）                              -->
+<!-- ============================================================ -->
+<div style="max-width:520px; margin:0 auto; background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 2px 16px rgba(0,0,0,0.08);">
+
+  <!-- 头部城市图片区域 -->
+  <div style="background:linear-gradient(135deg, #4a90d9 0%, #357abd 40%, #2b6cb0 100%); padding:32px 28px 24px; text-align:center;">
+    <div style="font-size:64px; line-height:1; margin-bottom:8px;">&#x26C5;</div>
+    <div style="color:rgba(255,255,255,0.9); font-size:14px; letter-spacing:2px;">2026年7月8日 · 周三</div>
+    <div style="color:#ffffff; font-size:28px; font-weight:700; margin-top:6px;">
+      南京 <span style="font-size:18px; font-weight:400;">· 天气预报</span>
+    </div>
+    <!-- 今日温度大数字 -->
+    <div style="margin-top:16px; display:flex; justify-content:center; align-items:flex-start; gap:8px;">
+      <span style="color:#ffffff; font-size:52px; font-weight:300; line-height:1;">25°</span>
+      <span style="color:rgba(255,255,255,0.6); font-size:20px; padding-top:14px;">~ 33°C</span>
+    </div>
+    <div style="color:rgba(255,255,255,0.85); font-size:14px; margin-top:4px;">
+      白天多云 &#183; 夜间晴 &#183; 南风 2级
+    </div>
+  </div>
+
+  <!-- 三天预报卡片 -->
+  <div style="padding:20px 24px;">
+    <div style="font-size:15px; font-weight:600; color:#333; margin-bottom:12px;">&#x1F4C5; 未来三天</div>
+
+    <!-- 今天 -->
+    <div style="display:flex; align-items:center; padding:10px 0; border-bottom:1px solid #f0f0f0;">
+      <span style="width:36px; font-size:13px; font-weight:600; color:#4a90d9;">今天</span>
+      <span style="font-size:28px; margin:0 10px;">&#x26C5;</span>
+      <span style="flex:1; font-size:13px; color:#555;">多云转晴</span>
+      <span style="font-size:13px; color:#999;">25° ~ 33°</span>
+    </div>
+    <!-- 明天 -->
+    <div style="display:flex; align-items:center; padding:10px 0; border-bottom:1px solid #f0f0f0;">
+      <span style="width:36px; font-size:13px; font-weight:600; color:#4a90d9;">明天</span>
+      <span style="font-size:28px; margin:0 10px;">&#x2600;&#xFE0F;</span>
+      <span style="flex:1; font-size:13px; color:#555;">晴</span>
+      <span style="font-size:13px; color:#999;">26° ~ 35°</span>
+    </div>
+    <!-- 后天 -->
+    <div style="display:flex; align-items:center; padding:10px 0;">
+      <span style="width:36px; font-size:13px; font-weight:600; color:#4a90d9;">后天</span>
+      <span style="font-size:28px; margin:0 10px;">&#x1F327;&#xFE0F;</span>
+      <span style="flex:1; font-size:13px; color:#555;">小雨</span>
+      <span style="font-size:13px; color:#999;">24° ~ 30°</span>
+    </div>
+  </div>
+
+  <!-- 分割线 -->
+  <div style="margin:0 24px; border-top:1px dashed #e8e8e8;"></div>
+
+  <!-- 生活指数 -->
+  <div style="padding:20px 24px;">
+    <div style="font-size:15px; font-weight:600; color:#333; margin-bottom:12px;">&#x1F3C3; 生活指数</div>
+
+    <div style="display:flex; flex-wrap:wrap; gap:10px;">
+      <div style="flex:1; min-width:calc(50% - 5px); background:#f7f9fc; border-radius:10px; padding:12px;">
+        <div style="font-size:20px; margin-bottom:4px;">&#x1F3C3;</div>
+        <div style="font-size:12px; color:#888;">运动指数</div>
+        <div style="font-size:13px; color:#333; font-weight:500;">适宜</div>
+        <div style="font-size:11px; color:#aaa;">天气较好，适合户外运动</div>
+      </div>
+      <div style="flex:1; min-width:calc(50% - 5px); background:#f7f9fc; border-radius:10px; padding:12px;">
+        <div style="font-size:20px; margin-bottom:4px;">&#x1F45A;</div>
+        <div style="font-size:12px; color:#888;">穿衣指数</div>
+        <div style="font-size:13px; color:#333; font-weight:500;">热</div>
+        <div style="font-size:11px; color:#aaa;">建议穿短袖、短裤</div>
+      </div>
+      <div style="flex:1; min-width:calc(50% - 5px); background:#f7f9fc; border-radius:10px; padding:12px;">
+        <div style="font-size:20px; margin-bottom:4px;">&#x1F6FD;</div>
+        <div style="font-size:12px; color:#888;">洗车指数</div>
+        <div style="font-size:13px; color:#333; font-weight:500;">较适宜</div>
+        <div style="font-size:11px; color:#aaa;">无雨，可以洗车</div>
+      </div>
+      <div style="flex:1; min-width:calc(50% - 5px); background:#f7f9fc; border-radius:10px; padding:12px;">
+        <div style="font-size:20px; margin-bottom:4px;">&#x1F31E;</div>
+        <div style="font-size:12px; color:#888;">紫外线</div>
+        <div style="font-size:13px; color:#333; font-weight:500;">很强</div>
+        <div style="font-size:11px; color:#aaa;">注意涂防晒霜</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI 播报正文 -->
+  <div style="padding:0 24px 20px;">
+    <div style="background:#fafbfc; border-left:3px solid #4a90d9; border-radius:0 10px 10px 0; padding:16px 18px;">
+      <div style="font-size:14px; color:#444; line-height:1.8;">
+        小丁早上好，我是噜噜～今天是2026/7/8 周三。<br><br>
+        今天南京多云转晴，温度25°C到33°C，体感舒适。明天晴好天气持续，气温稍微升高。后天有小雨光临，出门别忘了带伞哦🌂<br><br>
+        今天适合户外运动，紫外线较强记得涂防晒。穿衣的话短袖短裤就够啦～洗车的话这两天可以先等等，后天有雨。
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 每日毛选 ===== -->
+  <div style="margin:0 24px 20px;">
+    <div style="background:linear-gradient(135deg, #fef7e0 0%, #fdf2d0 100%); border-radius:12px; padding:20px 22px; text-align:center; border:1px solid #e8d5a0;">
+      <div style="font-size:12px; color:#b8963c; letter-spacing:3px; margin-bottom:10px;">&#x1F4D6; 每日毛选</div>
+      <div style="font-size:18px; color:#8b6914; font-weight:700; line-height:1.6; font-family: 'STSong', 'Songti SC', 'Noto Serif SC', 'SimSun', serif;">
+        "星星之火，可以燎原。"
+      </div>
+      <div style="font-size:11px; color:#b8963c; margin-top:8px;">—— 《星星之火，可以燎原》1930年</div>
+    </div>
+  </div>
+
+  <!-- 底部 -->
+  <div style="background:#f7f9fc; padding:18px 24px; text-align:center;">
+    <div style="font-size:11px; color:#aaa; line-height:1.6;">
+      &#x1F31F; Weather Agent · 每日自动推送<br>
+      数据来源：和风天气 · AI：DeepSeek
+    </div>
+  </div>
+
+</div>
+<!-- ============================================================ -->
+<!--  邮件主体结束                                                   -->
+<!-- ============================================================ -->
+
+<div class="preview-label" style="margin-top:24px;">⬆ 邮件效果预览 ⬆</div>
+
+</body>
+</html>
