@@ -99,12 +99,18 @@ def load_friends():
 def load_mao_quotes():
     """加载毛选语录"""
     quotes_file = os.path.join(os.path.dirname(__file__), "mao_quotes.json")
-    with open(quotes_file, "r", encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(quotes_file, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"   ⚠️ 毛选语录加载失败：{e}")
+        return []
 
 
 def get_daily_mao_quote(quotes):
     """根据日期获取每日毛选语录（年积日取模，同一天所有人看到同一条）"""
+    if not quotes:
+        return None
     day_of_year = datetime.now(timezone(timedelta(hours=8))).timetuple().tm_yday
     idx = day_of_year % len(quotes)
     return quotes[idx]
@@ -581,7 +587,8 @@ def main():
     friends = load_friends()
     mao_quotes = load_mao_quotes()
     mao_quote = get_daily_mao_quote(mao_quotes)
-    print(f"\n📋 共 {len(friends)} 位好友 | 📖 今日毛选：{mao_quote['quote'][:20]}...\n")
+    mao_label = f"| 📖 今日毛选：{mao_quote['quote'][:20]}..." if mao_quote else ""
+    print(f"\n📋 共 {len(friends)} 位好友 {mao_label}\n")
 
     for friend in friends:
         send_name = friend["sendName"]
