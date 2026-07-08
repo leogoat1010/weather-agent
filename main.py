@@ -43,7 +43,6 @@ WEEKDAYS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"
 # ---------- 生活指数类型 ----------
 INDICES_TYPES = {
     1: "运动指数",
-    2: "洗车指数",
     3: "穿衣指数",
     5: "紫外线指数",
     8: "舒适度指数",
@@ -278,11 +277,13 @@ def ai_summary(send_name, to_name, city, weather_text, indices_text,
 要求：
 - 以"{to_name}{greeting}，我是{send_name}～今天是{date_str}"开头
 - 语气亲切自然，像朋友每天早上发消息
+- 第一句直接总结今天的天气结论和温度，让人一眼就能知道今天该穿什么、要不要带伞
 - 概述三天天气趋势
-- 根据体感温度给更贴切的穿衣建议
-- 提醒下雨天带伞
-- 提一句洗车建议和运动建议
+- 根据体感温度给穿衣建议
+- 重要：检查今天和明天的"白天天气（textDay）"字段，如果出现"雨"或"雪"字样，务必提醒带伞；如果今明两天白天都没有雨雪，则不要提带伞
+- 根据运动指数给一句运动建议
 - 如果紫外线强，提醒防晒
+- 不要再提洗车建议
 
 城市：{city}
 
@@ -334,7 +335,7 @@ def build_html_email(send_name, to_name, city, now_date_str,
                 continue
             seen.add(name)
             # emoji per type
-            emoji_map = {"运动指数": "&#x1F3C3;", "洗车指数": "&#x1F6FD;",
+            emoji_map = {"运动指数": "&#x1F3C3;",
                          "穿衣指数": "&#x1F45A;", "紫外线指数": "&#x1F31E;",
                          "舒适度指数": "&#x1F60C;"}
             emoji = emoji_map.get(name, "&#x1F4CC;")
@@ -483,9 +484,24 @@ def build_html_email(send_name, to_name, city, now_date_str,
       </td>
     </tr>
 
+    <!-- ====== AI 播报正文（结论先行） ====== -->
+    <tr>
+      <td style="padding:8px 24px 16px;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fafbfc">
+          <tr>
+            <td style="border-left:3px solid #4a90d9;padding:14px 16px;">
+              <div style="font-size:14px;color:#444;line-height:1.85;">
+                {ai_text.replace(chr(10), '<br>')}
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
     <!-- ====== 未来三天预报 ====== -->
     <tr>
-      <td style="padding:20px 24px 12px;">
+      <td style="padding:12px 24px 8px;">
         <div style="font-size:15px;font-weight:600;color:#333;margin-bottom:4px;">&#x1F4C5; 未来三天</div>
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
           {forecast_rows}
@@ -502,21 +518,6 @@ def build_html_email(send_name, to_name, city, now_date_str,
         <div style="font-size:15px;font-weight:600;color:#333;margin-bottom:8px;">&#x1F3C3; 生活指数</div>
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
           {indices_items}
-        </table>
-      </td>
-    </tr>
-
-    <!-- ====== AI 播报正文 ====== -->
-    <tr>
-      <td style="padding:8px 24px 16px;">
-        <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fafbfc">
-          <tr>
-            <td style="border-left:3px solid #4a90d9;padding:14px 16px;">
-              <div style="font-size:14px;color:#444;line-height:1.85;">
-                {ai_text.replace(chr(10), '<br>')}
-              </div>
-            </td>
-          </tr>
         </table>
       </td>
     </tr>
