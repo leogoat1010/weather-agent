@@ -43,6 +43,7 @@ WEEKDAYS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"
 # ---------- 生活指数类型 ----------
 INDICES_TYPES = {
     1: "运动指数",
+    2: "洗车指数",
     3: "穿衣指数",
     5: "紫外线指数",
     8: "舒适度指数",
@@ -281,9 +282,8 @@ def ai_summary(send_name, to_name, city, weather_text, indices_text,
 - 概述三天天气趋势
 - 根据体感温度给穿衣建议
 - 重要：检查今天和明天的"白天天气（textDay）"字段，如果出现"雨"或"雪"字样，务必提醒带伞；如果今明两天白天都没有雨雪，则不要提带伞
-- 根据运动指数给一句运动建议
+- 顺带提一句适不适合户外运动和洗车
 - 如果紫外线强，提醒防晒
-- 不要再提洗车建议
 
 城市：{city}
 
@@ -331,7 +331,7 @@ def build_html_email(send_name, to_name, city, now_date_str,
         cards = []
         for item in indices:
             name = item["name"]
-            if name in seen:
+            if name in seen or name == "洗车指数":
                 continue
             seen.add(name)
             # emoji per type
