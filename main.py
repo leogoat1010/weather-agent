@@ -580,7 +580,7 @@ def build_html_email(send_name, to_name, city, now_date_str,
     <tr>
       <td bgcolor="#f7f9fc" style="padding:10px 24px;text-align:center;">
         <div style="font-size:10px;color:#aaa;line-height:1.6;">
-          &#x1F31F; Weather Agent · 每日自动推送<br>
+          &#x1F31F; Daily Copilot · 每日自动推送<br>
           数据：和风天气 · AI：DeepSeek
         </div>
       </td>
