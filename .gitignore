@@ -5,3 +5,5 @@ __pycache__/
 friends.json
 新文件 5.txt
 *.tmp
+dump_html.py
+test070901*.html

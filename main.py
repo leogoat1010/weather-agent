@@ -12,6 +12,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formataddr
 import requests
+import cnlunar
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -114,6 +115,23 @@ def get_daily_mao_quote(quotes):
     day_of_year = datetime.now(timezone(timedelta(hours=8))).timetuple().tm_yday
     idx = day_of_year % len(quotes)
     return quotes[idx]
+
+
+# ==================== 黄历 ====================
+
+def get_almanac():
+    """获取今日黄历宜忌（cnlunar 本地计算）"""
+    try:
+        today = datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None)
+        lunar = cnlunar.Lunar(today, godType='8char')
+        return {
+            "lunar_date": f"农历{lunar.lunarMonthCn}{lunar.lunarDayCn}",
+            "good": lunar.goodThing[:12] if lunar.goodThing else [],
+            "bad": lunar.badThing[:12] if lunar.badThing else [],
+        }
+    except Exception as e:
+        print(f"   ⚠️ 黄历获取失败：{e}")
+        return None
 
 
 # ==================== 城市定位 ====================
@@ -304,7 +322,7 @@ def ai_summary(send_name, to_name, city, weather_text, indices_text,
 # ==================== HTML 邮件构建（table 布局，兼容各邮件客户端） ====================
 
 def build_html_email(send_name, to_name, city, now_date_str,
-                     daily, indices, ai_text, warnings, aqi, mao_quote):
+                     daily, indices, ai_text, warnings, aqi, mao_quote, almanac):
     """构建完整的 HTML 邮件正文"""
 
     # --- 辅助：天气卡片的单行 ---
@@ -314,49 +332,48 @@ def build_html_email(send_name, to_name, city, now_date_str,
         temp = f"{day['tempMin']}° ~ {day['tempMax']}°"
         return (
             f'<tr>'
-            f'<td width="40" style="font-size:13px;font-weight:600;color:#4a90d9;padding:8px 0;">{label}</td>'
-            f'<td width="36" style="font-size:24px;padding:8px 0;text-align:center;">{icon}</td>'
-            f'<td style="font-size:13px;color:#555;padding:8px 0;">{desc}</td>'
-            f'<td width="70" style="font-size:13px;color:#999;padding:8px 0;text-align:right;">{temp}</td>'
+            f'<td width="40" style="font-size:13px;font-weight:600;color:#4a90d9;padding:5px 0;">{label}</td>'
+            f'<td width="36" style="font-size:24px;padding:5px 0;text-align:center;">{icon}</td>'
+            f'<td style="font-size:13px;color:#555;padding:5px 0;">{desc}</td>'
+            f'<td width="70" style="font-size:13px;color:#999;padding:5px 0;text-align:right;">{temp}</td>'
             f'</tr>'
         )
 
     labels = ["今天", "明天", "后天"]
     forecast_rows = "".join(forecast_row(labels[i], daily[i]) for i in range(min(3, len(daily))))
 
-    # --- 生活指数卡片 ---
+    # --- 生活指数卡片（仅运动 + 紫外线，一行两列） ---
     indices_items = ""
     if indices:
-        seen = set()
+        keep = {"运动指数", "紫外线指数"}
+        emoji_map = {"运动指数": "&#x1F3C3;", "紫外线指数": "&#x1F31E;"}
         cards = []
         for item in indices:
             name = item["name"]
-            if name in seen or name == "洗车指数":
+            if name not in keep:
                 continue
-            seen.add(name)
-            # emoji per type
-            emoji_map = {"运动指数": "&#x1F3C3;",
-                         "穿衣指数": "&#x1F45A;", "紫外线指数": "&#x1F31E;",
-                         "舒适度指数": "&#x1F60C;"}
             emoji = emoji_map.get(name, "&#x1F4CC;")
             cards.append(
-                f'<td width="50%" style="padding:4px;vertical-align:top;">'
+                f'<td width="50%" style="padding:4px 4px;vertical-align:top;border-radius:8px;background:#f7f9fc;" bgcolor="#f7f9fc">'
+                # 第一行：emoji + 名称 + 等级，水平排列
                 f'<table width="100%" cellpadding="0" cellspacing="0" border="0">'
-                f'<tr><td style="background:#f7f9fc;border-radius:8px;padding:12px;">'
-                f'<div style="font-size:20px;margin-bottom:2px;">{emoji}</div>'
-                f'<div style="font-size:11px;color:#888;">{name}</div>'
-                f'<div style="font-size:13px;color:#333;font-weight:500;">{item["category"]}</div>'
-                f'<div style="font-size:11px;color:#aaa;">{item["text"]}</div>'
+                f'<tr><td style="padding:8px 10px;">'
+                f'<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+                f'<tr>'
+                f'<td width="24" style="font-size:18px;vertical-align:middle;">{emoji}</td>'
+                f'<td style="font-size:11px;color:#888;vertical-align:middle;">{name}</td>'
+                f'<td style="font-size:13px;color:#333;font-weight:600;vertical-align:middle;text-align:right;">{item["category"]}</td>'
+                f'</tr></table>'
+                # 第二行：具体建议
+                f'<div style="font-size:11px;color:#aaa;margin-top:4px;line-height:1.4;">{item["text"]}</div>'
                 f'</td></tr></table></td>'
             )
-        # 每行2个
-        rows = []
-        for i in range(0, len(cards), 2):
-            pair = cards[i:i+2]
-            if len(pair) == 1:
-                pair.append('<td width="50%" style="padding:4px;"></td>')
-            rows.append(f'<tr>{"".join(pair)}</tr>')
-        indices_items = "".join(rows)
+        if len(cards) == 2:
+            indices_items = f'<tr>{"".join(cards)}</tr>'
+        elif cards:
+            # 只有一个时也居中显示
+            cards[0] = cards[0].replace('width="50%"', 'width="100%"')
+            indices_items = f'<tr>{"".join(cards)}</tr>'
 
     # --- 预警 section ---
     warning_html = ""
@@ -380,7 +397,7 @@ def build_html_email(send_name, to_name, city, now_date_str,
             )
         warning_html = (
             f'<tr>'
-            f'<td style="padding:16px 0 8px;">'
+            f'<td style="padding:10px 24px;">'
             f'<div style="font-size:14px;font-weight:600;color:#c0392b;margin-bottom:6px;">'
             f'&#x26A0;&#xFE0F; 天气预警</div>'
             f'<table width="100%" cellpadding="0" cellspacing="0" border="0">{warning_rows}</table>'
@@ -411,7 +428,7 @@ def build_html_email(send_name, to_name, city, now_date_str,
 
         aqi_html = (
             f'<tr>'
-            f'<td style="padding:16px 0 8px;">'
+            f'<td style="padding:10px 24px;">'
             f'<div style="font-size:14px;font-weight:600;color:#333;margin-bottom:6px;">'
             f'&#x1F4A8; 空气质量</div>'
             f'<table width="100%" cellpadding="0" cellspacing="0" border="0">'
@@ -427,18 +444,48 @@ def build_html_email(send_name, to_name, city, now_date_str,
             f'</td></tr>'
         )
 
+    # --- 黄历 section ---
+    almanac_html = ""
+    if almanac:
+        good_str = " · ".join(almanac["good"][:6]) if almanac["good"] else "诸事不宜"
+        bad_str = " · ".join(almanac["bad"][:6]) if almanac["bad"] else "—"
+        almanac_html = (
+            f'<tr>'
+            f'<td style="padding:10px 24px;">'
+            f'<div style="font-size:14px;font-weight:600;color:#333;margin-bottom:6px;">'
+            f'&#x1F4C5; {almanac["lunar_date"]}</div>'
+            f'<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+            f'<tr>'
+            # 宜 — 背景直铺在外层 td，无需嵌套 table，自动等高
+            f'<td width="50%" style="padding:4px 4px;vertical-align:top;border-radius:8px;background:#f0faf0;" bgcolor="#f0faf0">'
+            f'<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+            f'<tr><td style="padding:8px 10px;">'
+            f'<div style="font-size:11px;color:#4caf50;font-weight:600;margin-bottom:2px;">&#x2714; 宜</div>'
+            f'<div style="font-size:11px;color:#555;line-height:1.5;">{good_str}</div>'
+            f'</td></tr></table></td>'
+            # 忌
+            f'<td width="50%" style="padding:4px 4px;vertical-align:top;border-radius:8px;background:#fef5f5;" bgcolor="#fef5f5">'
+            f'<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+            f'<tr><td style="padding:8px 10px;">'
+            f'<div style="font-size:11px;color:#e57373;font-weight:600;margin-bottom:2px;">&#x2718; 忌</div>'
+            f'<div style="font-size:11px;color:#555;line-height:1.5;">{bad_str}</div>'
+            f'</td></tr></table></td>'
+            f'</tr></table>'
+            f'</td></tr>'
+        )
+
     # --- 毛选 section ---
     mao_html = ""
     if mao_quote:
         mao_html = (
             f'<tr>'
-            f'<td style="padding:16px 0 8px;">'
+            f'<td style="padding:10px 24px;">'
             f'<table width="100%" cellpadding="0" cellspacing="0" border="0" '
             f'bgcolor="#fefaf0" style="background:#fefaf0;border-radius:10px;">'
-            f'<tr><td style="padding:16px 20px;text-align:center;border:1px solid #e8d5a0;border-radius:10px;">'
-            f'<div style="font-size:11px;color:#b8963c;letter-spacing:2px;margin-bottom:8px;">'
+            f'<tr><td style="padding:12px 16px;text-align:center;border:1px solid #e8d5a0;border-radius:10px;">'
+            f'<div style="font-size:11px;color:#b8963c;letter-spacing:2px;margin-bottom:4px;">'
             f'&#x1F4D6; 每日毛选</div>'
-            f'<div style="font-size:17px;color:#8b6914;font-weight:700;line-height:1.7;'
+            f'<div style="font-size:16px;color:#8b6914;font-weight:700;line-height:1.7;'
             f'font-family:STSong, Songti SC, Noto Serif SC, SimSun, serif;">'
             f'"{mao_quote["quote"]}"</div>'
             f'<div style="font-size:11px;color:#b8963c;margin-top:6px;">'
@@ -458,39 +505,34 @@ def build_html_email(send_name, to_name, city, now_date_str,
   <!-- 邮件容器 520px -->
   <table width="520" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="border-radius:14px;overflow:hidden;max-width:520px;">
 
-    <!-- ====== HEADER ====== -->
+    <!-- ====== HEADER：左城市+日期，右温度+天气 ====== -->
     <tr>
-      <td bgcolor="#4a90d9" style="background:linear-gradient(160deg,#4a90d9 0%,#357abd 60%,#2b6cb0 100%);padding:28px 24px 20px;text-align:center;">
-        <div style="font-size:54px;line-height:1;margin-bottom:6px;">&#x26C5;</div>
-        <div style="color:rgba(255,255,255,0.85);font-size:13px;letter-spacing:2px;">{now_date_str}</div>
-        <div style="color:#fff;font-size:26px;font-weight:700;margin-top:4px;">{city}</div>
-      </td>
-    </tr>
-
-    <!-- 今日温度大数字（取第一天） -->
-    <tr>
-      <td bgcolor="#4a90d9" style="padding:0 24px 22px;text-align:center;">
+      <td bgcolor="#4a90d9" style="background:linear-gradient(160deg,#4a90d9 0%,#357abd 60%,#2b6cb0 100%);padding:18px 24px 14px;">
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
-            <td align="center">
-              <span style="color:#fff;font-size:48px;font-weight:300;line-height:1;">{daily[0]['tempMin']}°</span>
-              <span style="color:rgba(255,255,255,0.55);font-size:18px;vertical-align:super;">~ {daily[0]['tempMax']}°C</span>
+            <td style="vertical-align:middle;">
+              <div style="font-size:11px;color:rgba(255,255,255,0.75);letter-spacing:2px;">{now_date_str}</div>
+              <div style="color:#fff;font-size:26px;font-weight:700;margin-top:1px;">{city} <span style="font-size:28px;">&#x26C5;</span></div>
+            </td>
+            <td style="text-align:right;vertical-align:middle;">
+              <span style="color:#fff;font-size:40px;font-weight:300;line-height:1;">{daily[0]['tempMin']}°</span>
+              <span style="color:rgba(255,255,255,0.5);font-size:15px;">~ {daily[0]['tempMax']}°C</span>
+              <div style="color:rgba(255,255,255,0.8);font-size:11px;margin-top:1px;">
+                白天{daily[0]['textDay']} · {daily[0]['windDirDay']}风{daily[0]['windScaleDay']}级
+              </div>
             </td>
           </tr>
         </table>
-        <div style="color:rgba(255,255,255,0.8);font-size:13px;margin-top:4px;">
-          白天{daily[0]['textDay']} · {daily[0]['windDirDay']}风{daily[0]['windScaleDay']}级
-        </div>
       </td>
     </tr>
 
     <!-- ====== AI 播报正文（结论先行） ====== -->
     <tr>
-      <td style="padding:8px 24px 16px;">
+      <td style="padding:10px 24px;">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fafbfc">
           <tr>
-            <td style="border-left:3px solid #4a90d9;padding:14px 16px;">
-              <div style="font-size:14px;color:#444;line-height:1.85;">
+            <td style="border-left:3px solid #4a90d9;padding:10px 14px;">
+              <div style="font-size:13px;color:#444;line-height:1.7;">
                 {ai_text.replace(chr(10), '<br>')}
               </div>
             </td>
@@ -501,8 +543,8 @@ def build_html_email(send_name, to_name, city, now_date_str,
 
     <!-- ====== 未来三天预报 ====== -->
     <tr>
-      <td style="padding:12px 24px 8px;">
-        <div style="font-size:15px;font-weight:600;color:#333;margin-bottom:4px;">&#x1F4C5; 未来三天</div>
+      <td style="padding:10px 24px;">
+        <div style="font-size:14px;font-weight:600;color:#333;margin-bottom:6px;">&#x1F4C5; 未来三天</div>
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
           {forecast_rows}
         </table>
@@ -512,10 +554,13 @@ def build_html_email(send_name, to_name, city, now_date_str,
     <!-- 分割线 -->
     <tr><td style="padding:0 24px;"><div style="border-top:1px dashed #e0e0e0;"></div></td></tr>
 
+    <!-- ====== 黄历宜忌 ====== -->
+    {almanac_html}
+
     <!-- ====== 生活指数 ====== -->
     <tr>
-      <td style="padding:16px 24px;">
-        <div style="font-size:15px;font-weight:600;color:#333;margin-bottom:8px;">&#x1F3C3; 生活指数</div>
+      <td style="padding:10px 24px;">
+        <div style="font-size:14px;font-weight:600;color:#333;margin-bottom:6px;">&#x1F3E0; 生活指南</div>
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
           {indices_items}
         </table>
@@ -533,7 +578,7 @@ def build_html_email(send_name, to_name, city, now_date_str,
 
     <!-- ====== 底部 ====== -->
     <tr>
-      <td bgcolor="#f7f9fc" style="padding:16px 24px;text-align:center;">
+      <td bgcolor="#f7f9fc" style="padding:10px 24px;text-align:center;">
         <div style="font-size:10px;color:#aaa;line-height:1.6;">
           &#x1F31F; Weather Agent · 每日自动推送<br>
           数据：和风天气 · AI：DeepSeek
@@ -661,10 +706,13 @@ def main():
                 greeting = "晚上好"
             ai_text = f"{to_name}{greeting}～\n\n城市：{city}\n{weather_text}{indices_text}{warning_text}{aqi_text}"
 
-        # 5. 构建 HTML 邮件
+        # 5. 黄历
+        almanac = get_almanac()
+
+        # 6. 构建 HTML 邮件
         html_body = build_html_email(
             send_name, to_name, city, date_str,
-            daily, indices, ai_text, warnings, aqi, mao_quote
+            daily, indices, ai_text, warnings, aqi, mao_quote, almanac
         )
 
         # 6. 发送
