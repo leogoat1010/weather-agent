@@ -354,7 +354,7 @@ def build_html_email(send_name, to_name, city, now_date_str,
                 continue
             emoji = emoji_map.get(name, "&#x1F4CC;")
             cards.append(
-                f'<td width="50%" style="padding:4px 4px;vertical-align:top;border-radius:8px;background:#f7f9fc;" bgcolor="#f7f9fc">'
+                f'<td width="49%" style="padding:4px;vertical-align:top;border-radius:8px;background:#f7f9fc;" bgcolor="#f7f9fc">'
                 # 第一行：emoji + 名称 + 等级，水平排列
                 f'<table width="100%" cellpadding="0" cellspacing="0" border="0">'
                 f'<tr><td style="padding:8px 10px;">'
@@ -368,8 +368,9 @@ def build_html_email(send_name, to_name, city, now_date_str,
                 f'<div style="font-size:11px;color:#aaa;margin-top:4px;line-height:1.4;">{item["text"]}</div>'
                 f'</td></tr></table></td>'
             )
+        spacer = f'<td width="2%" style="padding:0;"></td>'
         if len(cards) == 2:
-            indices_items = f'<tr>{"".join(cards)}</tr>'
+            indices_items = f'<tr>{cards[0]}{spacer}{cards[1]}</tr>'
         elif cards:
             # 只有一个时也居中显示
             cards[0] = cards[0].replace('width="50%"', 'width="100%"')
@@ -456,15 +457,17 @@ def build_html_email(send_name, to_name, city, now_date_str,
             f'&#x1F4C5; {almanac["lunar_date"]}</div>'
             f'<table width="100%" cellpadding="0" cellspacing="0" border="0">'
             f'<tr>'
-            # 宜 — 背景直铺在外层 td，无需嵌套 table，自动等高
-            f'<td width="50%" style="padding:4px 4px;vertical-align:top;border-radius:8px;background:#f0faf0;" bgcolor="#f0faf0">'
+            # 宜
+            f'<td width="49%" style="padding:4px;vertical-align:top;border-radius:8px;background:#f0faf0;" bgcolor="#f0faf0">'
             f'<table width="100%" cellpadding="0" cellspacing="0" border="0">'
             f'<tr><td style="padding:8px 10px;">'
             f'<div style="font-size:11px;color:#4caf50;font-weight:600;margin-bottom:2px;">&#x2714; 宜</div>'
             f'<div style="font-size:11px;color:#555;line-height:1.5;">{good_str}</div>'
             f'</td></tr></table></td>'
+            # 间隔
+            f'<td width="2%" style="padding:0;"></td>'
             # 忌
-            f'<td width="50%" style="padding:4px 4px;vertical-align:top;border-radius:8px;background:#fef5f5;" bgcolor="#fef5f5">'
+            f'<td width="49%" style="padding:4px;vertical-align:top;border-radius:8px;background:#fef5f5;" bgcolor="#fef5f5">'
             f'<table width="100%" cellpadding="0" cellspacing="0" border="0">'
             f'<tr><td style="padding:8px 10px;">'
             f'<div style="font-size:11px;color:#e57373;font-weight:600;margin-bottom:2px;">&#x2718; 忌</div>'
